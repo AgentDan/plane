@@ -1,152 +1,153 @@
-import React, {useRef, useEffect, useState} from 'react'
+import React, {useEffect, useRef} from 'react'
 import * as THREE from "three"
-import {OrbitControls} from "three/examples/jsm/controls/OrbitControls"
 import {GLTFLoader} from "three/examples/jsm/loaders/GLTFLoader"
-import {DRACOLoader} from "three/examples/jsm/loaders/DRACOLoader"
-import {RGBELoader} from "three/examples/jsm/loaders/RGBELoader"
-import * as dat from 'dat.gui'
+import { gsap } from "gsap"
+import {ScrollTrigger} from "gsap/ScrollTrigger"
+console.clear()
 
-const Render3D = () => {
+gsap.registerPlugin(ScrollTrigger)
+
+const Main2 = () => {
 
     const mountRef = useRef(null)
-    const path = `./../../../uploads/door2Door.gltf`
+
+    const COLORS = {
+        background: "white",
+        light: "#ffffff",
+        sky: "#aaaaff",
+        ground: "#88ff88",
+        blue: "steelblue"
+    }
+    const styleSection = {display: "flex", outline: "1px solid red", width: "100vw", height: "100vw"}
 
     useEffect(() => {
-        const currentRef = mountRef.current;
-        const gui = new dat.GUI({ width: 400 })
-        const sceneParams = {
-            envMapIntensity: 0.38
-            // dlColor: 0xf71257,
-            // alColor: 0x1ae2d8,
+        const currentRef = mountRef.current
+        const {clientWidth: width, clientHeight: height} = currentRef
+
+        // ---SCENE
+
+        const scenes = {
+            one: new THREE.Scene(),
+            two: new THREE.Scene()
         }
+        let size = {width: 0, high: 0}
 
-        const {clientWidth: width, clientHeight: height} = currentRef;
+        scenes.one.background = new THREE.Color(COLORS.ground)
+        scenes.two.background = new THREE.Color(COLORS.blue)
 
-        //Scene, camera, renderer
-        const scene = new THREE.Scene();
+        const views = [
+            {scene: scenes.one, camera: null},
+            {scene: scenes.two, camera: null},
+        ]
+
+        // ---RENDERER
+        const renderer = new THREE.WebGLRenderer({antialias: true})
+        renderer.physicallyCorrectLights = true
+        renderer.outputEncoding = THREE.sRGBEncoding
+        renderer.toneMapping = THREE.ReinhardToneMapping
+        renderer.toneMappingExposure = 5
+        renderer.shadowMap.enabled = true
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap
+        console.log(width)
+        renderer.setSize(width, height);
+        currentRef.appendChild(renderer.domElement)
+
+        // ---CAMERA
+
+        let cameraTarget = new THREE.Vector3(0, 0.1, 0)
+
+        views[0].camera = new THREE.PerspectiveCamera(40, size.width, 0.1, 100)
+        views[0].camera.position.set(0, 0, 2)
+        views[0].scene.add(views[0].camera)
+        views[1].camera = new THREE.PerspectiveCamera(40, size.width, 0.1, 100)
+        views[1].camera.position.set(0, 1, 2)
+        views[1].scene.add(views[1].camera)
+
         const camera = new THREE.PerspectiveCamera(10, width / height, 0.1, 100);
         scene.add(camera);
         camera.position.set(15, 5, 15);
         camera.lookAt(new THREE.Vector3());
 
-        const renderer = new THREE.WebGLRenderer({alpha: true, antialias: true});
-        renderer.shadowMap.enabled = true;
-        renderer.setSize(width, height);
-        currentRef.appendChild(renderer.domElement);
-
-        //OrbitControls
-        const orbitControls = new OrbitControls(camera, renderer.domElement);
-        orbitControls.enableDamping = true;
-        orbitControls.maxDistance = 30;
-        orbitControls.minDistance = 1;
-        orbitControls.maxPolarAngle = Math.PI * 0.5;
-        orbitControls.minPolarAngle = Math.PI * 0.2;
-        //Resize canvas
-        const resize = () => {
-            renderer.setSize(currentRef.clientWidth, currentRef.clientHeight);
-            camera.aspect = currentRef.clientWidth / currentRef.clientHeight;
-            camera.updateProjectionMatrix();
-        };
-        window.addEventListener("resize", resize);
-
-        //HDRI
-        // new RGBELoader()
-        //     .load("./../../../uploads/HDR1.hdr", function (texture){
-        //         texture.mapping = THREE.EquirectangularReflectionMapping;
-        //         // scene.background = texture;
-        //         scene.environment = texture;
-        //     })
-
         // Light
-        const folderLights = gui.addFolder("Lights")
-
-        const ambientalLight = new THREE.AmbientLight(0xffffff, 1.5);
-        scene.add(ambientalLight);
-
-        folderLights.add(ambientalLight, 'intensity')
-            .min(0)
-            .max(10)
-            .step(0.0001)
-            .name("DL Intensity")
-
-        const pointlight = new THREE.PointLight(0xffffff, 5);
+        const pointlight = new THREE.PointLight(0xffffff, 6);
         pointlight.position.set(5, 5, 1);
         scene.add(pointlight);
 
-        folderLights.add(pointlight, 'intensity')
-            .min(0)
-            .max(10)
-            .step(0.0001)
-            .name("Point Light 1")
+        const directionalLight = new THREE.DirectionalLight(COLORS.light, 2)
+        directionalLight.castShadow = true;
+        directionalLight.shadow.camera.far = 10;
+        directionalLight.shadow.mapSize.set(1024, 1024);
+        directionalLight.shadow.normalBias = 0.05;
+        directionalLight.position.set(2, 5, 3);
 
-        const pointlight2 = new THREE.PointLight(0xffffff, 6);
-        pointlight2.position.set(-6, 5, 8);
-        scene.add(pointlight2);
+// views[0].scene.add(directionalLight)
+        views[1].scene.add(directionalLight)
 
-        folderLights.add(pointlight2, 'intensity')
-            .min(0)
-            .max(10)
-            .step(0.0001)
-            .name("Point Light 2")
+        const hemisphereLight = new THREE.HemisphereLight(COLORS.sky, COLORS.ground, 0.5)
+// views[0].scene.add(hemisphereLight)
+        views[1].scene.add(hemisphereLight)
 
-        const envMap = new THREE.CubeTextureLoader().load(
-            [
-                './envmap/px.png',
-                './envmap/nx.png',
-                './envmap/py.png',
-                './envmap/ny.png',
-                './envmap/pz.png',
-                './envmap/nz.png',
-            ]
-        )
-        scene.environment = envMap
-        folderLights.add(sceneParams, 'envMapIntensity')
-            .min(0)
-            .max(20)
-            .step(0.0001)
-            .name("EnvMap Intensity")
-            .onChange(() => {
-                scene.traverse(child => {
-                    if (child instanceof THREE.Mesh &&
-                        child.material instanceof THREE.MeshStandardMaterial) {
-                        child.material.envMapIntensity = sceneParams.envMapIntensity
-                    }
-                })
-            })
 
-        //Groups
-        const det = new THREE.Group();
+        const onResize = () => {
+            // renderer.setSize(currentRef.clientWidth, currentRef.clientHeight)
+            // camera.aspect = currentRef.clientWidth / currentRef.clientHeight
+            // renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+            // camera.updateProjectionMatrix()
 
-        //Loaders
-        const dracoLoader = new DRACOLoader()
-        dracoLoader.setDecoderPath("./../../../draco/")
+            size.width = container.clientWidth
+            size.height = container.clientHeight
+
+            views[0].camera.aspect = size.width / size.height
+            views[0].camera.updateProjectionMatrix()
+
+            views[1].camera.aspect = size.width / size.height
+            views[1].camera.updateProjectionMatrix()
+
+            renderer.setSize(size.width, size.height)
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+        };
+        window.addEventListener("resize", onResize);
+
+        // ---TICK Animate the scene
+        const tick = () => {
+            // renderer.render(scene, camera);
+
+            views[0].camera.lookAt(cameraTarget)
+            views[1].camera.lookAt(cameraTarget)
+
+            let bottom = size.height * 0
+            let height = size.height * 1
+            renderer.setViewport(0, 0, size.width, size.height)
+            renderer.setScissor(0, bottom, size.width, height)
+            renderer.setScissorTest(true)
+            renderer.render(views[0].scene, views[0].camera);
+
+            bottom = size.height * 0.5
+            height = size.height * 0.2
+            renderer.setViewport(0, 0, size.width, size.height)
+            renderer.setScissor(0, bottom, size.width, height)
+            renderer.setScissorTest(true)
+            renderer.render(views[1].scene, views[1].camera);
+
+            requestAnimationFrame(tick);
+        };
+        tick();
 
         const gltfLoader = new GLTFLoader()
-        gltfLoader.setDRACOLoader(dracoLoader)
-
-        gltfLoader.load(path, (gltf) => {
-            // console.log(gltf.scene.children)
-            const obje = gltf.scene
-            gltf.scene.children[9].visible = false
-            // gui.add(gltf.scene.children[9].visible, 'visible');
+        gltfLoader.load("./models/plane/plane.gltf", (gltf) => {
             scene.add(gltf.scene)
         })
+        gltfLoader.load('./models/suzanne3/suzanne3.gltf', (gltf) => {
+            views[0].scene.add(gltf.scene)
+        })
+        gltfLoader.load('./models/plane/plane.gltf', (gltf) => {
+            views[1].scene.add(gltf.scene)
+        })
 
-        // const controls = new function () {
-        //     gltf.scene.children[1].visible = false
-        // };
-
-        //Animate the scene
-        const animate = () => {
-            orbitControls.update();
-            renderer.render(scene, camera);
-            requestAnimationFrame(animate);
-        };
-        animate();
 
         return () => {
-            window.removeEventListener("resize", resize);
-            gui.destroy()
+            window.removeEventListener("resize", onResize);
             currentRef.removeChild(renderer.domElement);
         };
     }, []);
@@ -154,13 +155,30 @@ const Render3D = () => {
     return (
         <div>
             <div
-                className='Contenedor3D'
                 ref={mountRef}
                 style={{width: "100%", height: "100vh"}}
+                className="z-1 top-0 left-0 fixed w-[100%] h-[100%]"
             >
+            </div>
+            <div style={{zIndex: 2, position: "relative"}}>
+                <div style={styleSection}>
+                    OnePage
+                </div>
+                <div style={styleSection}>
+                    OnePage
+                </div>
+                <div style={styleSection}>
+                    OnePage
+                </div>
+                <div style={styleSection}>
+                    OnePage
+                </div>
+                <div style={styleSection}>
+                    OnePage
+                </div>
             </div>
         </div>
     )
 }
 
-export default Render3D
+export default Main2;

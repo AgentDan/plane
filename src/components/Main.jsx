@@ -1,11 +1,15 @@
 import React, {useEffect, useRef} from 'react'
 import * as THREE from "three"
 import {GLTFLoader} from "three/examples/jsm/loaders/GLTFLoader"
+import { gsap } from "gsap"
+import {ScrollTrigger} from "gsap/ScrollTrigger"
+console.clear()
+
+gsap.registerPlugin(ScrollTrigger)
 
 const Main = () => {
 
     const mountRef = useRef(null)
-    const pageRef = useRef(null)
     const path = `./models/plane/plane.gltf`
     let size = {width: 0, high: 0}
 
@@ -26,8 +30,6 @@ const Main = () => {
         // ---SCENE
         const scene = new THREE.Scene()
         scene.background = new THREE.Color(COLORS.background)
-
-        // ---ON RESIZE CANVAS
 
         // ---RENDERER
         const renderer = new THREE.WebGLRenderer({antialias: true})
@@ -88,7 +90,7 @@ const Main = () => {
                 className="z-1 top-0 left-0 fixed w-[100%] h-[100%]"
             >
             </div>
-            <div ref={pageRef} style={{zIndex: 2, position: "relative"}}>
+            <div style={{zIndex: 2, position: "relative"}}>
                 <div style={styleSection}>
                     OnePage
                 </div>
