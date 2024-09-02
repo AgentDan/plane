@@ -21,7 +21,6 @@ const Main = () => {
         blue: "steelblue"
     }
     const styleSection = {display: "flex", outline: "1px solid red", width: "100vw", height: "100vw"}
-    const PI = Math.PI
 
     useEffect(() => {
         const currentRef = mountRef.current
